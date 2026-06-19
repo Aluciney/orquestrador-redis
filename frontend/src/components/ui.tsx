@@ -115,3 +115,39 @@ export function CountsRow({
     </div>
   );
 }
+
+// Cores sólidas para os segmentos da barra (mesma semântica dos badges).
+const BAR_COLORS: Record<string, string> = {
+  active: 'bg-emerald-400',
+  waiting: 'bg-amber-400',
+  delayed: 'bg-sky-400',
+  failed: 'bg-red-500',
+  completed: 'bg-slate-400',
+  paused: 'bg-purple-400',
+};
+
+/**
+ * Barra de progresso segmentada por status (estilo Bull Board): cada segmento é
+ * proporcional à contagem daquele status. Sem jobs, mostra o trilho vazio.
+ */
+export function CountsBar({ counts }: { counts: Record<string, number> }) {
+  const order = ['active', 'waiting', 'delayed', 'failed', 'completed', 'paused'];
+  const total = order.reduce((s, k) => s + (counts[k] ?? 0), 0);
+  return (
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-surface-border">
+      {total > 0 &&
+        order.map((k) => {
+          const v = counts[k] ?? 0;
+          if (!v) return null;
+          return (
+            <div
+              key={k}
+              className={BAR_COLORS[k]}
+              style={{ width: `${(v / total) * 100}%` }}
+              title={`${COUNT_LABELS[k] ?? k}: ${v}`}
+            />
+          );
+        })}
+    </div>
+  );
+}
