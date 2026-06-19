@@ -7,12 +7,12 @@ import { clsx } from 'clsx';
 import { ChevronRight, ExternalLink } from 'lucide-react';
 
 const TILES: { key: keyof JobCounts; label: string; color: string }[] = [
-  { key: 'waiting', label: 'Waiting', color: 'text-amber-300' },
-  { key: 'active', label: 'Active', color: 'text-emerald-300' },
-  { key: 'delayed', label: 'Delayed', color: 'text-sky-300' },
-  { key: 'failed', label: 'Failed', color: 'text-red-300' },
-  { key: 'completed', label: 'Completed', color: 'text-slate-300' },
-  { key: 'paused', label: 'Paused', color: 'text-purple-300' },
+  { key: 'waiting', label: 'Aguardando', color: 'text-amber-300' },
+  { key: 'active', label: 'Ativos', color: 'text-emerald-300' },
+  { key: 'delayed', label: 'Agendados', color: 'text-sky-300' },
+  { key: 'failed', label: 'Falhas', color: 'text-red-300' },
+  { key: 'completed', label: 'Concluídos', color: 'text-slate-300' },
+  { key: 'paused', label: 'Pausados', color: 'text-purple-300' },
 ];
 
 export default function Dashboard() {

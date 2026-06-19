@@ -83,10 +83,20 @@ const COUNT_STYLES: Record<string, string> = {
   paused: 'bg-purple-500/15 text-purple-300',
 };
 
+/** Rótulos em português para os status de jobs do BullMQ. */
+export const COUNT_LABELS: Record<string, string> = {
+  waiting: 'aguardando',
+  active: 'ativos',
+  delayed: 'agendados',
+  completed: 'concluídos',
+  failed: 'falhas',
+  paused: 'pausados',
+};
+
 export function CountBadge({ kind, value }: { kind: string; value: number }) {
   return (
     <span className={clsx('badge', COUNT_STYLES[kind] ?? 'bg-slate-700 text-slate-300')}>
-      {kind}: {value}
+      {COUNT_LABELS[kind] ?? kind}: {value}
     </span>
   );
 }
