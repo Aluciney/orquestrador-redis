@@ -6,6 +6,7 @@ import { env } from '../config/env.js';
 import { redisServerRepository } from '../repositories/redisServer.repository.js';
 import { queueRepository } from '../repositories/queue.repository.js';
 import { queueRegistry } from './queueRegistry.js';
+import { accessService } from './access.service.js';
 import { logger } from '../config/logger.js';
 
 const FILTER_COOKIE = 'bb_queues';
@@ -101,10 +102,17 @@ class BullBoardService {
 
       const ids = this.parseIds(this.resolveRaw(req));
 
-      const rows =
+      let rows =
         ids.length > 0
           ? queueRepository.findByIds(ids)
           : queueRepository.findAll({ enabled: true });
+
+      // Escopo de visibilidade: usuário comum só enxerga as filas dos grupos
+      // permitidos (nunca não classificadas). Admin vê tudo.
+      const user = req.user;
+      if (user && !user.isAdmin) {
+        rows = rows.filter((q) => accessService.canSeeGroup(user, q.group_id));
+      }
 
       const adapters = rows
         .map((q) => {

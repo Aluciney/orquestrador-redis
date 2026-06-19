@@ -3,9 +3,11 @@ import { queueRepository } from '../repositories/queue.repository.js';
 import { toolRepository } from '../repositories/tool.repository.js';
 import { groupRepository } from '../repositories/group.repository.js';
 import { queueRegistry } from './queueRegistry.js';
+import { accessService } from './access.service.js';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import type { QueueDetailRow } from '../database/types.js';
+import type { SessionUser } from './auth.service.js';
 
 export interface JobCounts {
   waiting: number;
@@ -156,6 +158,35 @@ class StatsService {
     void byId; // (mantido para extensões futuras)
     this.cache = { data, expires: Date.now() + env.STATS_CACHE_TTL_MS };
     return data;
+  }
+
+  /**
+   * Dashboard com escopo do usuário. Admin recebe tudo; usuário comum recebe
+   * apenas as ferramentas/grupos permitidos (sem filas não classificadas).
+   * Reaproveita o cache global e apenas filtra a resposta.
+   */
+  async dashboardForUser(user: SessionUser, force = false): Promise<DashboardStats> {
+    const full = await this.dashboard(force);
+    const allowed = accessService.allowedGroupIds(user);
+    if (allowed === 'all') return full;
+
+    const allowedSet = new Set(allowed);
+    const tools: ToolStats[] = full.tools
+      .map((tool) => {
+        const groups = tool.groups.filter((g) => allowedSet.has(g.id));
+        const counts = groups.reduce((acc, g) => addCounts(acc, g.counts), { ...EMPTY });
+        return { ...tool, groups, counts };
+      })
+      .filter((tool) => tool.groups.length > 0);
+
+    const totals = tools.reduce((acc, t) => addCounts(acc, t.counts), { ...EMPTY });
+
+    return {
+      totals,
+      tools,
+      unclassified: [], // não classificadas: só admin
+      generatedAt: full.generatedAt,
+    };
   }
 
   invalidate(): void {

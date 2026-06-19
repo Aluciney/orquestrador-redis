@@ -8,9 +8,15 @@ import type { RedisServerInput } from './types';
 
 type Query = Record<string, string | number | boolean | undefined>;
 
+type ListOpts = { enabled?: boolean };
+
 /* ----------------------------- Redis ----------------------------- */
-export const useRedisList = (params?: Query) =>
-  useQuery({ queryKey: ['redis', params], queryFn: () => api.listRedis(params) });
+export const useRedisList = (params?: Query, opts?: ListOpts) =>
+  useQuery({
+    queryKey: ['redis', params],
+    queryFn: () => api.listRedis(params),
+    enabled: opts?.enabled ?? true,
+  });
 
 export function useRedisMutations() {
   const qc = useQueryClient();
@@ -35,8 +41,12 @@ export function useRedisMutations() {
 }
 
 /* ----------------------------- Tools ----------------------------- */
-export const useToolsList = (params?: Query) =>
-  useQuery({ queryKey: ['tools', params], queryFn: () => api.listTools(params) });
+export const useToolsList = (params?: Query, opts?: ListOpts) =>
+  useQuery({
+    queryKey: ['tools', params],
+    queryFn: () => api.listTools(params),
+    enabled: opts?.enabled ?? true,
+  });
 
 export function useToolMutations() {
   const qc = useQueryClient();
@@ -114,4 +124,31 @@ export function useSync() {
       qc.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
+}
+
+/* ----------------------------- Usuários (admin) ----------------------------- */
+export const useUsersList = (params?: Query, opts?: ListOpts) =>
+  useQuery({
+    queryKey: ['users', params],
+    queryFn: () => api.listUsers(params),
+    enabled: opts?.enabled ?? true,
+  });
+
+export function useUserMutations() {
+  const qc = useQueryClient();
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['users'] });
+  return {
+    create: useMutation({ mutationFn: api.createUser, onSuccess: invalidate }),
+    update: useMutation({
+      mutationFn: (v: { id: number; body: { is_admin?: boolean; enabled?: boolean } }) =>
+        api.updateUser(v.id, v.body),
+      onSuccess: invalidate,
+    }),
+    remove: useMutation({ mutationFn: api.deleteUser, onSuccess: invalidate }),
+    setAccess: useMutation({
+      mutationFn: (v: { id: number; body: { toolIds: number[]; groupIds: number[] } }) =>
+        api.setUserAccess(v.id, v.body),
+      onSuccess: invalidate,
+    }),
+  };
 }

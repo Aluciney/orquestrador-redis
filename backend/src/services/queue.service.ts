@@ -3,9 +3,11 @@ import {
   type QueueFilter,
 } from '../repositories/queue.repository.js';
 import { groupRepository } from '../repositories/group.repository.js';
+import { accessService } from './access.service.js';
 import { AppError } from '../utils/AppError.js';
 import { parsePagination, paginate, type Paginated } from '../utils/pagination.js';
 import type { QueueDetailRow } from '../database/types.js';
+import type { SessionUser } from './auth.service.js';
 
 function toFilter(query: Record<string, unknown>): QueueFilter {
   const num = (v: unknown) =>
@@ -22,28 +24,44 @@ function toFilter(query: Record<string, unknown>): QueueFilter {
   };
 }
 
+/** Aplica o escopo de visibilidade do usuário ao filtro de filas. */
+function applyScope(filter: QueueFilter, user: SessionUser): QueueFilter {
+  const allowed = accessService.allowedGroupIds(user);
+  if (allowed === 'all') return filter; // admin: sem restrição
+  // Usuário comum: só os grupos permitidos (exclui não classificadas).
+  return { ...filter, groupIds: allowed, unclassified: false };
+}
+
 export const queueService = {
-  list(query: Record<string, unknown>): Paginated<QueueDetailRow> {
+  list(query: Record<string, unknown>, user: SessionUser): Paginated<QueueDetailRow> {
     const p = parsePagination(query);
-    const filter: QueueFilter = {
-      ...toFilter(query),
-      search: p.search,
-      limit: p.pageSize,
-      offset: p.offset,
-    };
+    const filter = applyScope(
+      {
+        ...toFilter(query),
+        search: p.search,
+        limit: p.pageSize,
+        offset: p.offset,
+      },
+      user
+    );
     const data = queueRepository.findAll(filter);
     const total = queueRepository.count({ ...filter, limit: undefined, offset: undefined });
     return paginate(data, total, p);
   },
 
   /** Lista sem paginação (para montar a árvore lateral). */
-  listAll(query: Record<string, unknown> = {}): QueueDetailRow[] {
-    return queueRepository.findAll({ ...toFilter(query), search: undefined });
+  listAll(query: Record<string, unknown>, user: SessionUser): QueueDetailRow[] {
+    return queueRepository.findAll(
+      applyScope({ ...toFilter(query), search: undefined }, user)
+    );
   },
 
-  get(id: number): QueueDetailRow {
+  get(id: number, user: SessionUser): QueueDetailRow {
     const row = queueRepository.findById(id);
     if (!row) throw AppError.notFound('Fila');
+    if (!accessService.canSeeGroup(user, row.group_id)) {
+      throw new AppError('Acesso negado a esta fila.', 403);
+    }
     return row;
   },
 

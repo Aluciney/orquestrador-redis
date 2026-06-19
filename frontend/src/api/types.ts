@@ -6,6 +6,56 @@ export interface Paginated<T> {
   totalPages: number;
 }
 
+export interface AuthUser {
+  id: number;
+  username: string;
+  isAdmin: boolean;
+  authType?: 'local' | 'ad';
+}
+
+export interface User {
+  id: number;
+  username: string;
+  auth_type: 'local' | 'ad';
+  is_admin: boolean;
+  enabled: boolean;
+  created_at: string;
+  isBootstrapAdmin: boolean;
+}
+
+export interface UserAccess {
+  toolIds: number[];
+  groupIds: number[];
+}
+
+export interface AdConfig {
+  url: string;
+  base_dn: string;
+  bind_dn: string;
+  search_filter: string;
+  tls_reject_unauthorized: boolean;
+  enabled: boolean;
+  hasPassword: boolean;
+  updated_at: string | null;
+}
+
+export interface AdConfigInput {
+  url: string;
+  base_dn: string;
+  bind_dn: string;
+  bind_password?: string;
+  search_filter: string;
+  tls_reject_unauthorized: boolean;
+  enabled: boolean;
+}
+
+export interface AdTestResult {
+  ok: boolean;
+  step: string;
+  message: string;
+  userDn?: string;
+}
+
 export interface RedisServer {
   id: number;
   name: string;

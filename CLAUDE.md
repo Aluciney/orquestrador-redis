@@ -37,7 +37,18 @@ Camadas do backend: `routes → middlewares → controllers → services → rep
 
 `discovery.service` (rota `POST /api/sync`) varre cada Redis habilitado com `SCAN bull:*:id` (nunca `KEYS`) e faz *upsert* das filas novas. `stats.service` agrega `getJobCounts()` por fila → grupo → ferramenta, com cache TTL (`STATS_CACHE_TTL_MS`); qualquer mutação de tool/group/queue/redis chama `statsService.invalidate()` nos controllers.
 
-Frontend: `api/client.ts` (axios, baseURL `/api`) + `api/hooks.ts` (react-query, com invalidação cruzada de `dashboard`). Páginas em `src/pages/`, componentes compartilhados em `src/components/ui.tsx`. A reordenação de ferramentas (`ToolsPage`) usa **@dnd-kit** (drag pelo handle) com estado local otimista e persiste via `PUT /api/tools/reorder`.
+Frontend: `api/client.ts` (axios, baseURL `/api`, `withCredentials: true`) + `api/hooks.ts` (react-query, com invalidação cruzada de `dashboard`). Páginas em `src/pages/`, componentes compartilhados em `src/components/ui.tsx`. A reordenação de ferramentas (`ToolsPage`) usa **@dnd-kit** (drag pelo handle) com estado local otimista e persiste via `PUT /api/tools/reorder`.
+
+## Autenticação e RBAC
+
+Dois perfis: **admin** (controle total) e **usuário comum** (só Dashboard e Filas, e só as filas atribuídas).
+
+- **Sessão**: JWT em **cookie httpOnly** (`SameSite=Lax`). `middlewares/auth.ts` expõe `requireAuth` (recarrega o user do banco a cada request — reflete `enabled`/admin na hora) e `requireAdmin`. `req.user` é um `SessionUser` (`{id, username, isAdmin}`).
+- **Proteção de rotas** (`routes/index.ts`): `/api/health` e `/api/auth/{login,me,logout}` são públicos; o resto exige `requireAuth`. `redis`, `tools`, `groups`, `users`, `sync` e as **mutações** de `queues` exigem `requireAdmin`. O Bull Board (`/admin/queues`) também passa por `requireAuth` (`app.ts`).
+- **Login**: `auth.service.login()` decide por `users.auth_type` — `local` valida bcrypt; `ad` chama `ldap.service` (bind com conta de serviço → busca sAMAccountName → re-bind como o DN do usuário). A config do AD vive no **banco** (tabela `ad_config`, linha única), gerenciada pela tela **Active Directory** (`/ad`, admin) com endpoints `GET/PUT /api/ad-config` e `POST /api/ad-config/test`. A URL carrega esquema+porta (`ldap://…:389` | `ldaps://…:636`); para LDAPS com CA interna há o flag `tls_reject_unauthorized`. NÃO há mais variáveis `AD_*` no ambiente.
+- **Usuário inicial** `admin` (auth local, `is_admin=1`) é semeado em `index.ts` via `authService.ensureBootstrapAdmin()` com `ADMIN_INITIAL_PASSWORD`. Não pode ser removido/desabilitado; o último admin ativo também é protegido.
+- **Escopo de visibilidade** (o ponto central): `access.service.allowedGroupIds(user)` → `'all'` para admin, ou união dos grupos diretos (`user_group_access`) com os grupos das ferramentas atribuídas (`user_tool_access`). Filas **não classificadas** (`group_id NULL`) só admin vê. Aplicado em: `queue.service` (filtro `groupIds`), `stats.service.dashboardForUser` (pós-filtra o cache global por usuário) e `bullBoard.service` (filtra adapters por `req.user`).
+- Frontend: `auth/AuthContext.tsx` (bootstrap via `GET /api/auth/me`), `App.tsx` faz a guarda de rotas (sem sessão → `Login`; rotas admin só renderizam para admin), e as ações de admin são escondidas nas páginas via `useAuth()`.
 
 ## Gotchas (aprendidos na marra — não regredir)
 

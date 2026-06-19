@@ -12,6 +12,13 @@ services:
       LOG_LEVEL: info
       STATS_CACHE_TTL_MS: 5000
       BULL_BOARD_BASE_PATH: /admin/queues
+      # --- Autenticação / sessão ---
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-producao}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-admin}
+      SESSION_TTL: ${SESSION_TTL:-28800}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # A configuração do Active Directory é feita pela tela "AD" na aplicação
+      # (admin) e persistida no banco — não há mais variáveis AD_* aqui.
     volumes:
       - sqlite-data:/app/data
     healthcheck:

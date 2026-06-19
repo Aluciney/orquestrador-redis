@@ -1,5 +1,9 @@
 import axios from 'axios';
 import type {
+  AdConfig,
+  AdConfigInput,
+  AdTestResult,
+  AuthUser,
   DashboardStats,
   Group,
   Paginated,
@@ -10,9 +14,11 @@ import type {
   SyncResult,
   TestResult,
   Tool,
+  User,
+  UserAccess,
 } from './types';
 
-export const http = axios.create({ baseURL: '/api' });
+export const http = axios.create({ baseURL: '/api', withCredentials: true });
 
 // Normaliza mensagens de erro vindas do backend.
 http.interceptors.response.use(
@@ -37,6 +43,36 @@ const qs = (params?: Query) => {
 };
 
 export const api = {
+  // Auth
+  login: (username: string, password: string) =>
+    http.post<AuthUser>('/auth/login', { username, password }).then((r) => r.data),
+  logout: () => http.post('/auth/logout').then(() => undefined),
+  me: () => http.get<AuthUser>('/auth/me').then((r) => r.data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    http
+      .post('/auth/change-password', { currentPassword, newPassword })
+      .then(() => undefined),
+
+  // Usuários (admin)
+  listUsers: (p?: Query) =>
+    http.get<Paginated<User>>(`/users${qs(p)}`).then((r) => r.data),
+  createUser: (b: { username: string; is_admin: boolean }) =>
+    http.post<User>('/users', b).then((r) => r.data),
+  updateUser: (id: number, b: { is_admin?: boolean; enabled?: boolean }) =>
+    http.put<User>(`/users/${id}`, b).then((r) => r.data),
+  deleteUser: (id: number) => http.delete(`/users/${id}`).then(() => undefined),
+  getUserAccess: (id: number) =>
+    http.get<UserAccess>(`/users/${id}/access`).then((r) => r.data),
+  setUserAccess: (id: number, b: UserAccess) =>
+    http.put<UserAccess>(`/users/${id}/access`, b).then((r) => r.data),
+
+  // Configuração de AD (admin)
+  getAdConfig: () => http.get<AdConfig>('/ad-config').then((r) => r.data),
+  saveAdConfig: (b: AdConfigInput) =>
+    http.put<AdConfig>('/ad-config', b).then((r) => r.data),
+  testAdConfig: (b: AdConfigInput & { testUsername?: string; testPassword?: string }) =>
+    http.post<AdTestResult>('/ad-config/test', b).then((r) => r.data),
+
   // Redis
   listRedis: (p?: Query) =>
     http.get<Paginated<RedisServer>>(`/redis${qs(p)}`).then((r) => r.data),

@@ -4,15 +4,16 @@ import { statsService } from '../services/stats.service.js';
 
 export const queueController = {
   list(req: Request, res: Response) {
-    res.json(queueService.list(req.query));
+    res.json(queueService.list(req.query, req.user!));
   },
 
   get(req: Request, res: Response) {
-    res.json(queueService.get(Number(req.params.id)));
+    res.json(queueService.get(Number(req.params.id), req.user!));
   },
 
   async stats(req: Request, res: Response) {
-    const queue = queueService.get(Number(req.params.id));
+    // get() já valida o acesso do usuário à fila.
+    const queue = queueService.get(Number(req.params.id), req.user!);
     res.json(await statsService.queueStats(queue));
   },
 

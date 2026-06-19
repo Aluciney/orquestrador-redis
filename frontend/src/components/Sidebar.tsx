@@ -7,20 +7,29 @@ import {
   ListTree,
   Settings,
   Layers,
+  Users,
+  Network,
 } from 'lucide-react';
 import { useToolsList, useRedisList } from '../api/hooks';
+import { useAuth } from '../auth/AuthContext';
 
-const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/tools', label: 'Ferramentas', icon: Boxes },
-  { to: '/redis', label: 'Redis', icon: Server },
-  { to: '/queues', label: 'Filas', icon: ListTree },
-  { to: '/settings', label: 'Configurações', icon: Settings },
+const baseItems = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true, adminOnly: false },
+  { to: '/queues', label: 'Filas', icon: ListTree, adminOnly: false },
+  { to: '/tools', label: 'Ferramentas', icon: Boxes, adminOnly: true },
+  { to: '/redis', label: 'Redis', icon: Server, adminOnly: true },
+  { to: '/users', label: 'Usuários', icon: Users, adminOnly: true },
+  { to: '/ad', label: 'Active Directory', icon: Network, adminOnly: true },
+  { to: '/settings', label: 'Configurações', icon: Settings, adminOnly: false },
 ];
 
 export default function Sidebar() {
-  const { data: tools } = useToolsList({ pageSize: 100 });
-  const { data: redis } = useRedisList({ pageSize: 100 });
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+  const navItems = baseItems.filter((i) => !i.adminOnly || isAdmin);
+
+  const { data: tools } = useToolsList({ pageSize: 100 }, { enabled: isAdmin });
+  const { data: redis } = useRedisList({ pageSize: 100 }, { enabled: isAdmin });
 
   return (
     <aside className="w-64 shrink-0 border-r border-surface-border bg-surface-card flex flex-col">

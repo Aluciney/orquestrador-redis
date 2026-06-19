@@ -4,8 +4,10 @@ import { logger } from './config/logger.js';
 import { runMigrations } from './database/migrate.js';
 import { connectionManager } from './services/connectionManager.js';
 import { queueRegistry } from './services/queueRegistry.js';
+import { authService } from './services/auth.service.js';
 
 runMigrations();
+await authService.ensureBootstrapAdmin();
 
 const app = createApp();
 const server = app.listen(env.PORT, () => {

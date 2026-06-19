@@ -10,6 +10,7 @@ import {
   useRedisList,
 } from '../api/hooks';
 import { PageHeader, Modal, Spinner, EmptyState } from '../components/ui';
+import { useAuth } from '../auth/AuthContext';
 import type { Queue } from '../api/types';
 
 function ClassifyModal({
@@ -118,9 +119,12 @@ export default function QueuesPage() {
     [search, page, toolId, redisServerId]
   );
 
+  const { user } = useAuth();
+  const isAdmin = !!user?.isAdmin;
+
   const { data, isLoading } = useQueuesList(query);
-  const { data: tools } = useToolsList({ pageSize: 100 });
-  const { data: redis } = useRedisList({ pageSize: 100 });
+  const { data: tools } = useToolsList({ pageSize: 100 }, { enabled: isAdmin });
+  const { data: redis } = useRedisList({ pageSize: 100 }, { enabled: isAdmin });
   const m = useQueueMutations();
   const [classify, setClassify] = useState<Queue | null>(null);
 
@@ -149,30 +153,34 @@ export default function QueuesPage() {
             setPage(1);
           }}
         />
-        <select
-          className="input max-w-[200px]"
-          value={toolId}
-          onChange={(e) => setFilter('toolId', e.target.value)}
-        >
-          <option value="">Todas as ferramentas</option>
-          {(tools?.data ?? []).map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="input max-w-[200px]"
-          value={redisServerId}
-          onChange={(e) => setFilter('redisServerId', e.target.value)}
-        >
-          <option value="">Todos os Redis</option>
-          {(redis?.data ?? []).map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+        {isAdmin && (
+          <>
+            <select
+              className="input max-w-[200px]"
+              value={toolId}
+              onChange={(e) => setFilter('toolId', e.target.value)}
+            >
+              <option value="">Todas as ferramentas</option>
+              {(tools?.data ?? []).map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="input max-w-[200px]"
+              value={redisServerId}
+              onChange={(e) => setFilter('redisServerId', e.target.value)}
+            >
+              <option value="">Todos os Redis</option>
+              {(redis?.data ?? []).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {isLoading ? (
@@ -234,35 +242,39 @@ export default function QueuesPage() {
                         >
                           <ExternalLink size={15} />
                         </Link>
-                        <button
-                          className="btn-ghost !p-2"
-                          title="Classificar"
-                          onClick={() => setClassify(q)}
-                        >
-                          <FolderTree size={15} />
-                        </button>
-                        <button
-                          className="btn-ghost !p-2"
-                          title={q.enabled ? 'Desabilitar' : 'Habilitar'}
-                          onClick={() =>
-                            m.update.mutate({
-                              id: q.id,
-                              body: { enabled: !q.enabled },
-                            })
-                          }
-                        >
-                          <Power size={15} />
-                        </button>
-                        <button
-                          className="btn-danger !p-2"
-                          title="Remover do catálogo"
-                          onClick={() => {
-                            if (confirm(`Remover "${q.queue_name}" do catálogo?`))
-                              m.remove.mutate(q.id);
-                          }}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {isAdmin && (
+                          <>
+                            <button
+                              className="btn-ghost !p-2"
+                              title="Classificar"
+                              onClick={() => setClassify(q)}
+                            >
+                              <FolderTree size={15} />
+                            </button>
+                            <button
+                              className="btn-ghost !p-2"
+                              title={q.enabled ? 'Desabilitar' : 'Habilitar'}
+                              onClick={() =>
+                                m.update.mutate({
+                                  id: q.id,
+                                  body: { enabled: !q.enabled },
+                                })
+                              }
+                            >
+                              <Power size={15} />
+                            </button>
+                            <button
+                              className="btn-danger !p-2"
+                              title="Remover do catálogo"
+                              onClick={() => {
+                                if (confirm(`Remover "${q.queue_name}" do catálogo?`))
+                                  m.remove.mutate(q.id);
+                              }}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

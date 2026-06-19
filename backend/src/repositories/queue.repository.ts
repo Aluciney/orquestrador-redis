@@ -5,6 +5,7 @@ export interface QueueFilter {
   search?: string;
   redisServerId?: number;
   groupId?: number | null;
+  groupIds?: number[]; // escopo do usuário comum: só estes grupos (exclui não classificadas)
   toolId?: number;
   enabled?: boolean;
   unclassified?: boolean;
@@ -43,6 +44,19 @@ function buildWhere(f: QueueFilter): { clause: string; params: Record<string, un
   if (f.groupId !== undefined && f.groupId !== null) {
     conds.push('q.group_id = @groupId');
     params.groupId = f.groupId;
+  }
+  if (f.groupIds !== undefined) {
+    // Escopo do usuário comum. Lista vazia => não vê nenhuma fila.
+    if (f.groupIds.length === 0) {
+      conds.push('1 = 0');
+    } else {
+      conds.push(
+        `q.group_id IN (${f.groupIds.map((_, i) => `@gid${i}`).join(',')})`
+      );
+      f.groupIds.forEach((gid, i) => {
+        params[`gid${i}`] = gid;
+      });
+    }
   }
   if (f.unclassified) {
     conds.push('q.group_id IS NULL');
