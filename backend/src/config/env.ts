@@ -19,6 +19,10 @@ export const env = {
   LOG_LEVEL: process.env.LOG_LEVEL ?? 'info',
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? '*',
   STATS_CACHE_TTL_MS: int(process.env.STATS_CACHE_TTL_MS, 5000),
+  // Timeout por fila ao coletar contagens; protege o dashboard de travar
+  // quando um Redis está offline (o comando ficaria enfileirado para sempre,
+  // pois o BullMQ exige maxRetriesPerRequest: null).
+  STATS_QUEUE_TIMEOUT_MS: int(process.env.STATS_QUEUE_TIMEOUT_MS, 3000),
   BULL_BOARD_BASE_PATH: process.env.BULL_BOARD_BASE_PATH ?? '/admin/queues',
   NODE_ENV: process.env.NODE_ENV ?? 'development',
 

@@ -55,6 +55,29 @@ export interface DashboardStats {
   generatedAt: string;
 }
 
+/**
+ * Resolve a promise normalmente ou rejeita após `ms`. Necessário porque, com
+ * `maxRetriesPerRequest: null` (exigido pelo BullMQ), comandos para um Redis
+ * offline ficam enfileirados indefinidamente e nunca rejeitam por conta própria.
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`Timeout de ${ms}ms ao consultar a fila`));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 function addCounts(a: JobCounts, b: JobCounts): JobCounts {
   return {
     waiting: a.waiting + b.waiting,
@@ -77,13 +100,16 @@ class StatsService {
     }
     try {
       const queue = queueRegistry.get(server, q.queue_name);
-      const c = await queue.getJobCounts(
-        'waiting',
-        'active',
-        'delayed',
-        'completed',
-        'failed',
-        'paused'
+      const c = await withTimeout(
+        queue.getJobCounts(
+          'waiting',
+          'active',
+          'delayed',
+          'completed',
+          'failed',
+          'paused'
+        ),
+        env.STATS_QUEUE_TIMEOUT_MS
       );
       return {
         ...q,
